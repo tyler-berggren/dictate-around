@@ -53,11 +53,11 @@ into the field where you started.
 
 | | |
 |---|---|
-| **macOS** | 14 Sonoma or later (the audio ducking API needs 14). |
-| **Mac** | Apple silicon recommended. Transcription works on Intel, more slowly. |
+| **macOS** | 13 Ventura or later. Turning other audio down needs 14 Sonoma; on 13 everything else works. 12 and older may work but are untested (the installer warns and carries on). |
+| **Mac** | Apple silicon recommended. On Intel the installer picks a smaller English model (`ggml-small.en-q5_1`, about 190 MB) so transcription stays quick; set `model` to use another. |
 | **[Homebrew](https://brew.sh)** | The installer uses it for Hammerspoon, ffmpeg and whisper.cpp. |
 | **Command Line Tools** | For building the small ducking helper: `xcode-select --install`. Without them everything works except ducking. |
-| **Disk** | About 600 MB, almost all of it the speech model. |
+| **Disk** | About 600 MB (about 250 MB on Intel), almost all of it the speech model. |
 
 ## Install
 
@@ -142,8 +142,8 @@ doesn't need to exist.
 | `tapMax` | `0.30` | The longest press, in seconds, that counts as a tap for a double-tap hotkey. |
 | `doubleTapWindow` | `0.40` | The longest gap, in seconds, between the two taps. |
 | `model` | `~/.local/share/whisper/ggml-large-v3-turbo-q5_0.bin` | The whisper.cpp model file. |
-| `ffmpeg` | `/opt/homebrew/bin/ffmpeg` | Path to ffmpeg. |
-| `whisper` | `/opt/homebrew/bin/whisper-cli` | Path to whisper.cpp's command-line tool. |
+| `ffmpeg` | `/opt/homebrew/bin/ffmpeg` (`/usr/local/bin` on Intel) | Path to ffmpeg. |
+| `whisper` | `/opt/homebrew/bin/whisper-cli` (`/usr/local/bin` on Intel) | Path to whisper.cpp's command-line tool. |
 | `duckHelper` | `~/.local/share/dictate-around/dictate-around-duck` | Path to the ducking helper. |
 
 The installer writes the common ones for you and reloads Hammerspoon:

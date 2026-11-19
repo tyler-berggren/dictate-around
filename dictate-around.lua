@@ -19,6 +19,7 @@
 --   tapMax           longest Fn press, in seconds, that counts as a tap; default 0.30
 --   doubleTapWindow  longest gap, in seconds, between the two taps; default 0.40
 --   ffmpeg, whisper  binary paths; default /opt/homebrew/bin/ffmpeg and /opt/homebrew/bin/whisper-cli
+--                    (/usr/local/bin on an Intel Mac)
 --   duckHelper       default ~/.local/share/dictate-around/dictate-around-duck (built by the installer)
 
 require("hs.ipc") -- lets `hs -c` (and install.sh --status) talk to Hammerspoon
@@ -26,6 +27,8 @@ require("hs.ipc") -- lets `hs -c` (and install.sh --status) talk to Hammerspoon
 local M = {}
 
 local HOME = os.getenv("HOME")
+-- Homebrew lives in /opt/homebrew on Apple silicon and /usr/local on Intel.
+local BREW = hs.fs.attributes("/opt/homebrew/bin") and "/opt/homebrew/bin" or "/usr/local/bin"
 M.configPath = HOME .. "/.config/dictate-around/config.json"
 if not hs.fs.attributes(M.configPath) and hs.fs.attributes(HOME .. "/.config/claude-kit/dictate-around.json") then
   M.configPath = HOME .. "/.config/claude-kit/dictate-around.json" -- older location, until install.sh moves it
@@ -40,8 +43,8 @@ local defaults = {
   duck            = "mid",
   tapMax          = 0.30,
   doubleTapWindow = 0.40,
-  ffmpeg          = "/opt/homebrew/bin/ffmpeg",
-  whisper         = "/opt/homebrew/bin/whisper-cli",
+  ffmpeg          = BREW .. "/ffmpeg",
+  whisper         = BREW .. "/whisper-cli",
   duckHelper      = HOME .. "/.local/share/dictate-around/dictate-around-duck",
 }
 

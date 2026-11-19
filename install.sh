@@ -38,12 +38,18 @@ HS_LINK="$HS_DIR/dictate-around.lua"
 CONFIG="$HOME/.config/dictate-around/config.json"
 OLD_CONFIG="$HOME/.config/claude-kit/dictate-around.json"   # before dictate-around had its own repo
 MODEL_DIR="$HOME/.local/share/whisper"
-MODEL_URL="${MODEL_URL:-https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin}"
+# Apple silicon gets large-v3-turbo; Intel a smaller English model, so transcription stays quick.
+DEFAULT_MODEL_URL="https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin"
+INTEL=""; [ "$(uname -m)" = "x86_64" ] && INTEL=1
+[ -n "$INTEL" ] && DEFAULT_MODEL_URL="https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en-q5_1.bin"
+MODEL_URL="${MODEL_URL:-$DEFAULT_MODEL_URL}"
 MODEL="$MODEL_DIR/$(basename "$MODEL_URL")"
 BEGIN="-- BEGIN:dictate-around (managed by dictate-around install.sh)"
 OLD_BEGIN="-- BEGIN:dictate-around (managed by tb-claude-kit scripts/install-dictate-around)"
 END="-- END:dictate-around"
-BREW_BIN="/opt/homebrew/bin"
+BREW_BIN="/opt/homebrew/bin"                 # Apple silicon
+[ -d "$BREW_BIN" ] || BREW_BIN="/usr/local/bin"  # Intel
+MACOS_MAJOR="$(sw_vers -productVersion 2>/dev/null | cut -d. -f1)"
 
 say()  { printf '%s\n' "$*"; }
 warn() { printf '! %s\n' "$*" >&2; }
@@ -158,6 +164,10 @@ done
 
 [ "$(uname)" = "Darwin" ] || { warn "dictate-around is macOS only."; exit 1; }
 command -v brew >/dev/null || { warn "Homebrew is required: https://brew.sh"; exit 1; }
+if [ -n "$MACOS_MAJOR" ] && [ "$MACOS_MAJOR" -lt 13 ]; then
+  warn "macOS $MACOS_MAJOR is older than dictate-around is tested on (13+). Carrying on; if Homebrew can't"
+  warn "install Hammerspoon, ffmpeg or whisper-cpp here, dictate-around won't work on this Mac."
+fi
 [ -f "$MODULE_SRC" ] || { warn "Missing $MODULE_SRC"; exit 1; }
 
 # 1. Apps and tools
@@ -175,13 +185,15 @@ fi
 # 2. Model
 if [ ! -f "$MODEL" ]; then
   mkdir -p "$MODEL_DIR"
-  say "Downloading $(basename "$MODEL") (about 550 MB)..."
+  say "Downloading $(basename "$MODEL")$([ -n "$INTEL" ] && echo ' (about 190 MB)' || echo ' (about 550 MB)')..."
   curl -fL --retry 3 --progress-bar -o "$MODEL.part" "$MODEL_URL"
   mv "$MODEL.part" "$MODEL"
 fi
 
 # 3. Ducking helper (rebuilt when its source is newer)
-if [ ! -x "$DUCK_BIN" ] || [ "$DUCK_SRC" -nt "$DUCK_BIN" ]; then
+if [ -n "$MACOS_MAJOR" ] && [ "$MACOS_MAJOR" -lt 14 ]; then
+  say "macOS $MACOS_MAJOR: no ducking (it needs macOS 14). Dictation works; other audio just isn't turned down."
+elif [ ! -x "$DUCK_BIN" ] || [ "$DUCK_SRC" -nt "$DUCK_BIN" ]; then
   if xcrun --find swiftc >/dev/null 2>&1; then
     mkdir -p "$(dirname "$DUCK_BIN")"
     xcrun swiftc -O -o "$DUCK_BIN" "$DUCK_SRC" || warn "Couldn't build the ducking helper; dictation works, without ducking."
@@ -210,6 +222,8 @@ if [ -n "$MIC" ]; then
 fi
 [ -n "$HOTKEY" ] && config_set hotkey "$HOTKEY"
 [ -n "$DUCK" ] && config_set duck "$DUCK"
+# A model other than the module's default (Intel, or MODEL_URL) goes into the settings, unless one is set.
+[ "$(basename "$MODEL")" != "ggml-large-v3-turbo-q5_0.bin" ] && [ -z "$(config_get model)" ] && config_set model "$MODEL"
 
 reload_hammerspoon
 
